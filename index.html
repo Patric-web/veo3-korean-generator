@@ -7,8 +7,8 @@
     <meta name="description" content="한국어 동영상 아이디어를 Google Veo 3용 영문 프롬프트로 자동 변환해주는 무료 도구입니다.">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -17,19 +17,23 @@
         const { useState, useEffect } = React;
 
         // API 키와 하루 최대 사용 횟수 설정
-        const GEMINI_API_KEY = "AIzaSyB5PrL7ZFx9xag2hJSeN0m_I9HaRJp1C9Q"; // 
-        const MAX_DAILY_CALLS = 10; // ✨하루 최대 허용 횟수
+        // Replace "YOUR_API_KEY" with your actual Gemini API Key.
+        // It's highly recommended to handle this securely on the server side in a production environment.
+        const GEMINI_API_KEY = "AIzaSyB5PrL7ZFx9xag2hJSeN0m_I9HaRJp1C9Q";
+        const MAX_DAILY_CALLS = 10; // Set the maximum number of daily uses.
 
-        // Lucide Icons (SVG로 직접 구현)
+        // Lucide Icons (Implemented as inline SVGs)
         const Camera = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>);
         const Wand2 = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 4V2m0 14v-2M8 9h2m14 0h-2M8.5 8.5l1.5-1.5M15.5 15.5l1.5-1.5M8.5 15.5l1.5 1.5M15.5 8.5l1.5 1.5"/><circle cx="12" cy="12" r="2"/></svg>);
         const Copy = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>);
         const Check = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg>);
 
-        // 로컬 스토리지에 사용 횟수를 관리하는 함수
+        // Functions to manage the call count using localStorage
+        // This is a simple client-side solution. For a robust solution, a server-side counter is recommended.
         const getDailyCallCount = () => {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = new Date().toISOString().slice(0, 10); // Format 'YYYY-MM-DD'
             const storedData = JSON.parse(localStorage.getItem('apiCallCount')) || {};
+            // If the date has changed, reset the count
             if (storedData.date !== today) {
                 storedData.date = today;
                 storedData.count = 0;
@@ -53,11 +57,13 @@
             const [error, setError] = useState('');
             const [callCount, setCallCount] = useState(0);
 
+            // Update the call count state on initial load
             useEffect(() => {
                 setCallCount(getDailyCallCount().count);
             }, []);
 
             const generatePrompt = async () => {
+                // Input validation
                 if (!koreanInput.trim()) {
                     setError('동영상 아이디어를 입력해주세요.');
                     return;
@@ -65,40 +71,51 @@
 
                 const { count } = getDailyCallCount();
 
-                // ✨ 사용 횟수 제한 로직
+                // ✨ Daily usage limit logic
                 if (count >= MAX_DAILY_CALLS) {
-                    setError('일일 최대 사용 횟수(' + MAX_DAILY_CALLS + '회)를 초과했습니다. 내일 다시 시도해주세요.');
-                    return;
+                    setError(`일일 최대 사용 횟수(${MAX_DAILY_CALLS}회)를 초과했습니다. 내일 다시 시도해주세요.`);
+                    return; // Prevent API call
                 }
 
                 setIsLoading(true);
                 setError('');
 
+                // The prompt is now structured to ask for two distinct JSON objects within one response.
                 const promptText = `
                     You are a professional video prompt generator for Google Veo 3. 
-                    Translate the following Korean video idea into a structured English prompt in JSON format.
-                    Do not include any other text besides the JSON output.
+                    Your task is to translate the following Korean video idea into a structured English prompt, and also provide a Korean explanation for each field.
 
                     Korean Input: "${koreanInput}"
 
-                    Respond ONLY in the following JSON format:
+                    Respond ONLY in the following JSON format. Do not include any other text besides the valid JSON.
                     {
-                      "basic_info": {
-                        "main_prompt": "Main English prompt for Veo 3",
-                        "main_prompt_kr": "메인 프롬프트 한국어 설명",
-                        "duration": "8 seconds"
+                      "english_prompt": {
+                        "basic_info": {
+                          "main_prompt": "Main English prompt for Veo 3",
+                          "duration": "8 seconds"
+                        },
+                        "scene": {
+                          "description": "Detailed scene description (English)",
+                          "mood": "Mood/Tone (English)"
+                        },
+                        "technical": {
+                          "camera_work": "Camera work description (English)",
+                          "visual_style": "Visual style (English)"
+                        }
                       },
-                      "scene": {
-                        "description": "Detailed scene description (English)",
-                        "description_kr": "장면 상세 설명 (한국어)",
-                        "mood": "Mood/Tone (English)",
-                        "mood_kr": "분위기 (한국어)"
-                      },
-                      "technical": {
-                        "camera_work": "Camera work description (English)",
-                        "camera_work_kr": "카메라 워크 설명 (한국어)",
-                        "visual_style": "Visual style (English)",
-                        "visual_style_kr": "비주얼 스타일 (한국어)"
+                      "korean_explanation": {
+                        "basic_info": {
+                          "main_prompt_kr": "메인 프롬프트 한국어 설명",
+                          "duration_kr": "영상 길이 한국어 설명"
+                        },
+                        "scene": {
+                          "description_kr": "장면 상세 설명 (한국어)",
+                          "mood_kr": "분위기 (한국어)"
+                        },
+                        "technical": {
+                          "camera_work_kr": "카메라 워크 설명 (한국어)",
+                          "visual_style_kr": "비주얼 스타일 (한국어)"
+                        }
                       }
                     }
                 `;
@@ -123,7 +140,7 @@
                     const parsedPrompt = JSON.parse(responseText.replace(/```json\n?|```\n?/g, ""));
                     setGeneratedPrompt(parsedPrompt);
                     
-                    // 성공 시에만 카운트 증가
+                    // On success, increment the counter and update the state
                     incrementDailyCallCount(count);
                     setCallCount(count + 1);
 
@@ -135,14 +152,55 @@
                 }
             };
             
-            const copyToClipboard = async () => { /* ... */ }; // 이 부분은 이전 코드와 동일
+            const copyToClipboard = () => {
+                if (generatedPrompt && generatedPrompt.english_prompt) {
+                    const copyablePrompt = generatedPrompt.english_prompt;
+                    const jsonString = JSON.stringify(copyablePrompt, null, 2);
+
+                    try {
+                        // Attempt to use the modern Clipboard API
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(jsonString);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                        } else {
+                            throw new Error('Clipboard API is not supported.');
+                        }
+                    } catch (err) {
+                        console.error('복사 실패:', err);
+                        // Fallback to the legacy method
+                        const textArea = document.createElement('textarea');
+                        textArea.value = jsonString;
+                        textArea.style.position = 'fixed';
+                        textArea.style.top = '0';
+                        textArea.style.left = '0';
+                        textArea.style.opacity = '0';
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        try {
+                            const successful = document.execCommand('copy');
+                            if (successful) {
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                            } else {
+                                setError('복사 실패: 브라우저에서 클립보드 접근이 허용되지 않습니다.');
+                            }
+                        } catch (err) {
+                            setError('복사 실패: 브라우저에서 클립보드 접근이 허용되지 않습니다.');
+                        } finally {
+                            document.body.removeChild(textArea);
+                        }
+                    }
+                }
+            };
 
             const useExample = (example) => { setKoreanInput(example); };
 
             const examples = ["바다에서 서핑하는 사람을 석양 배경으로 드라마틱하게 찍고 싶어", "고양이가 창가에서 비 오는 날 멍하니 바깥을 보는 감성적인 영상", "도시의 밤거리를 걸으며 네온사인이 반사되는 시네마틱한 장면", "아침 햇살이 들어오는 카페에서 커피를 마시는 평온한 순간"];
 
             return (
-                <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
+                <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white font-sans">
                     <div className="container mx-auto px-4 py-8 max-w-4xl">
                         {/* Header */}
                         <div className="text-center mb-12">
@@ -150,7 +208,7 @@
                                 <Camera /><h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Veo 3 프롬프트 생성기</h1>
                             </div>
                             <p className="text-gray-300 text-lg mb-2">한국어로 동영상 아이디어를 입력하면 Google Veo 3용 프롬프트로 변환해드립니다</p>
-                            <p className="text-gray-400 text-sm">🎬 무료 • 빠른 변환 • 구조화된 결과 • 한영 번역 지원</p>
+                            <p className="text-400 text-sm">🎬 무료 • 빠른 변환 • 구조화된 결과 • 한영 번역 지원</p>
                         </div>
 
                         {/* Input Section */}
@@ -212,20 +270,60 @@
                             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                                     <h2 className="text-xl font-bold">✨ 생성된 Veo 3 프롬프트</h2>
-                                    <button onClick={copyToClipboard} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 self-end sm:self-auto">
-                                        {copied ? <Check /> : <Copy />}
-                                        {copied ? '복사됨!' : 'JSON 복사'}
-                                    </button>
                                 </div>
                                 <div className="space-y-6">
-                                    <div className="border-l-4 border-purple-400 pl-4"><h3 className="text-lg font-bold text-purple-400 mb-3">🎯 기본 정보</h3><div className="space-y-3"><div className="p-4 bg-black/20 rounded-lg"><h4 className="font-semibold text-purple-300 mb-2">메인 프롬프트</h4><p className="text-gray-100 mb-2">{generatedPrompt.basic_info.main_prompt}</p><p className="text-gray-400 text-sm italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.basic_info.main_prompt_kr}</p></div><div className="p-4 bg-black/20 rounded-lg"><h4 className="font-semibold text-purple-300 mb-2">영상 길이</h4><p className="text-gray-100">{generatedPrompt.basic_info.duration}</p></div></div></div>
-                                    <div className="border-l-4 border-blue-400 pl-4"><h3 className="text-lg font-bold text-blue-400 mb-3">🎬 장면 구성</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div className="p-4 bg-black/20 rounded-lg"><h4 className="font-semibold text-blue-300 mb-2">장면 설명</h4><p className="text-gray-100 text-sm mb-2">{generatedPrompt.scene.description}</p><p className="text-gray-400 text-xs italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.scene.description_kr}</p></div><div className="p-4 bg-black/20 rounded-lg"><h4 className="font-semibold text-blue-300 mb-2">분위기</h4><p className="text-gray-100 text-sm mb-2">{generatedPrompt.scene.mood}</p><p className="text-gray-400 text-xs italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.scene.mood_kr}</p></div></div></div>
-                                    <div className="border-l-4 border-green-400 pl-4"><h3 className="text-lg font-bold text-green-400 mb-3">📹 기술적 요소</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div className="p-4 bg-black/20 rounded-lg"><h4 className="font-semibold text-green-300 mb-2">카메라 워크</h4><p className="text-gray-100 text-sm mb-2">{generatedPrompt.technical.camera_work}</p><p className="text-gray-400 text-xs italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.technical.camera_work_kr}</p></div><div className="p-4 bg-black/20 rounded-lg"><h4 className="font-semibold text-green-300 mb-2">비주얼 스타일</h4><p className="text-gray-100 text-sm mb-2">{generatedPrompt.technical.visual_style}</p><p className="text-gray-400 text-xs italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.technical.visual_style_kr}</p></div></div></div>
+                                    <div className="border-l-4 border-purple-400 pl-4">
+                                        <h3 className="text-lg font-bold text-purple-400 mb-3">🎯 기본 정보</h3>
+                                        <div className="space-y-3">
+                                            <div className="p-4 bg-black/20 rounded-lg">
+                                                <h4 className="font-semibold text-purple-300 mb-2">메인 프롬프트</h4>
+                                                <p className="text-gray-100 mb-2">{generatedPrompt.english_prompt.basic_info.main_prompt}</p>
+                                                <p className="text-gray-400 text-sm italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.korean_explanation.basic_info.main_prompt_kr}</p>
+                                            </div>
+                                            <div className="p-4 bg-black/20 rounded-lg">
+                                                <h4 className="font-semibold text-purple-300 mb-2">영상 길이</h4>
+                                                <p className="text-gray-100">{generatedPrompt.english_prompt.basic_info.duration}</p>
+                                                <p className="text-gray-400 text-sm italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.korean_explanation.basic_info.duration_kr}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="border-l-4 border-blue-400 pl-4">
+                                        <h3 className="text-lg font-bold text-blue-400 mb-3">🎬 장면 구성</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="p-4 bg-black/20 rounded-lg">
+                                                <h4 className="font-semibold text-blue-300 mb-2">장면 설명</h4>
+                                                <p className="text-gray-100 text-sm mb-2">{generatedPrompt.english_prompt.scene.description}</p>
+                                                <p className="text-gray-400 text-xs italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.korean_explanation.scene.description_kr}</p>
+                                            </div>
+                                            <div className="p-4 bg-black/20 rounded-lg">
+                                                <h4 className="font-semibold text-blue-300 mb-2">분위기</h4>
+                                                <p className="text-gray-100 text-sm mb-2">{generatedPrompt.english_prompt.scene.mood}</p>
+                                                <p className="text-gray-400 text-xs italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.korean_explanation.scene.mood_kr}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="border-l-4 border-green-400 pl-4">
+                                        <h3 className="text-lg font-bold text-green-400 mb-3">📹 기술적 요소</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="p-4 bg-black/20 rounded-lg">
+                                                <h4 className="font-semibold text-green-300 mb-2">카메라 워크</h4>
+                                                <p className="text-gray-100 text-sm mb-2">{generatedPrompt.english_prompt.technical.camera_work}</p>
+                                                <p className="text-gray-400 text-xs italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.korean_explanation.technical.camera_work_kr}</p>
+                                            </div>
+                                            <div className="p-4 bg-black/20 rounded-lg">
+                                                <h4 className="font-semibold text-green-300 mb-2">비주얼 스타일</h4>
+                                                <p className="text-gray-100 text-sm mb-2">{generatedPrompt.english_prompt.technical.visual_style}</p>
+                                                <p className="text-gray-400 text-xs italic border-t border-gray-600 pt-2">한국어: {generatedPrompt.korean_explanation.technical.visual_style_kr}</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="mt-6">
-                                    <h3 className="font-semibold mb-2 text-gray-300">📋 JSON 형태 (Veo 3에서 사용 가능)</h3>
-                                    <pre className="bg-black/40 p-4 rounded-lg text-xs sm:text-sm overflow-x-auto text-green-300 max-h-60 overflow-y-auto">
-                                        {JSON.stringify(generatedPrompt, null, 2)}
+                                    <div className="flex items-center justify-between gap-4">
+                                        <h3 className="font-semibold text-gray-300">📋 JSON 형태 (Veo 3에서 사용 가능)</h3>
+                                    </div>
+                                    <pre className="bg-black/40 p-4 rounded-lg text-xs sm:text-sm overflow-x-auto text-green-300 max-h-60 overflow-y-auto mt-2">
+                                        {JSON.stringify(generatedPrompt.english_prompt, null, 2)}
                                     </pre>
                                 </div>
                             </div>
